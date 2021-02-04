@@ -1,0 +1,41 @@
+name: Go
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: make test
+
+      - name: Check coverage
+        continue-on-error: true # TODO Remove this after adding more tests
+        run: |
+          TARGET=90
+          # Calculate test coverage
+          coverage_score=$(echo "$(make calculate-coverage)" | tail -n 1)
+          # Check if coverage is >= TARGET
+          result=$(bc -l <<<"${coverage_score}>=${TARGET}")
+          test $result -gt 0
+
+      # Use Nancy for dependencies check: https://github.com/marketplace/actions/nancy-for-github-actions
+      - name: WriteGoList
+        run: go list -json -m all > go.list
+
+      - name: Dependencies check
+        uses: sonatype-nexus-community/nancy-github-action@main
